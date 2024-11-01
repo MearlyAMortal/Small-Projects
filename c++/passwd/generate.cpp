@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <ctype.h>
 #include <cstdlib>
 #include <ctime>
 
@@ -16,13 +17,23 @@ const int ARRAYSIZE = 204;
 
 
 bool CheckInput(int argc, char* argv[]){
-  if ( argc == 2){ return true; }
-  std::cout << "ERROR: Input Invalid" << std::endl;
-  exit(1);
+  if ( argc != 2 || std::stoi(argv[1]) < 1 || std::stoi(argv[1]) >= ARRAYSIZE ){
+    std::cout << "ERROR: Input Invalid" << std::endl;
+    return false;
+  }
+  try {
+    int password_length_check = std::stoi(argv[1]);
+    
+  } catch (const std::invalid_argument&) {
+    std::cout << "ERROR: Input Invalid" << std::endl;
+    return false;
+  } 
+  return true; 
 }
 
 
 void PrintList(char charList[], int size){
+  std::cout << "Password of length " << size << ": ";
   for ( int i = 0; i < size; i++ ){
     std::cout << charList[i];
   }
@@ -62,8 +73,9 @@ char* FillAllCharsRandom(char allCharsRandom[]){
 int main(int argc, char* argv[]){
   std::srand(static_cast<unsigned int>(std::time(0)));
 
-  CheckInput(argc, argv);
-
+  if ( CheckInput(argc, argv) == false ){
+    exit(1);
+  }
   // Random seed.
   std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
@@ -77,13 +89,7 @@ int main(int argc, char* argv[]){
   FillPassword(allCharsRandom, password, password_length);
 
   PrintList(password, password_length);
-  //std::cout << "Password: " << PrintList(password, password_length);
-
-  // DEBUG ONLY
-  //PrintList(allCharsRandom, ARRAYSIZE);
-
-
-
+  
   return 0;
 }
 
