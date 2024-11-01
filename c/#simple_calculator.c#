@@ -1,0 +1,72 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+
+const int MAX_EXPRESSION_SIZE = 25;
+char expression[MAX_EXPRESSION_SIZE];
+
+
+
+// Reads char's from user into expression[]
+void read_chars(char expression[]){
+  char c;
+  int p = 0;
+
+  printf("Enter an expression: ");
+  
+  while ( scanf("%c", &c) ){
+    if ( c == '\n' ) { return;}
+    //printf("here at %c\n", c);
+    expression[p] = c;
+    p+=1;
+  }
+}
+
+
+// Prints the current values in expression
+void print_expression(char expression[]){
+  printf("EXPRESSION: ");
+  for ( int i = 0; i < MAX_EXPRESSION_SIZE; i++ ){
+    if ( expression[i] == '\n' ) { return; } // END LINE CHECK
+    printf("%c", expression[i]); 
+  }
+  printf("\n");
+}
+
+
+// Parses expression for numbers and modifiers
+void parse_expression(char expression[]){
+  int size;
+
+  for ( int i = 0; i < MAX_EXPRESSION_SIZE; i++ ){
+    /* if ( expression[i] == '\n' ) { */
+  /*     size = i; */
+  /*     break; */
+  /*   } */
+
+  /*   printf("here"); */
+  /* } */
+
+  /* printf("end"); */
+}
+
+
+// Calculates the number from the expression
+float calculate(char expression[]){
+
+  return 1.1;
+}
+
+
+int main(){
+  printf("Welcome to the best calculator ever made!\n");
+
+  
+  read_chars(expression);
+  
+  //print_expression(expression);
+
+  parse_expression(expression);
+  
+  return 0;
+}

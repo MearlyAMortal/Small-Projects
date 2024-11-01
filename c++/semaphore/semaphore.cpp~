@@ -1,0 +1,18 @@
+#include <pthread.h>
+#include <mutex>
+#include <condition_variable>
+
+class Semaphore {
+public:
+  Semaphore(int init_value) {
+    n = init_value;
+  }
+
+  void sem_wait();
+  void sem_post();
+
+private:
+  int n;
+  std::mutex sm;
+  std::condition_variable waitCondition;
+}

@@ -1,0 +1,129 @@
+#include <iostream>
+//#include <ifstream>
+
+/* Author: Logan Puntous
+   Date: Apr/9/2024
+   Program: Double hand Blackjack
+
+   Goal: The player is to reach a total of 21 before the dealer.
+   Payout is 2 to 1.
+
+ */
+
+
+
+struct Card{
+  int value;
+  char suit;
+  char color;
+  char face;
+};
+
+struct Deck{
+  Card un_used[104];
+  Card used[104];
+};
+
+struct Hand{
+  Card hand[11]; //Max is 4 aces 4 twos and 3 threes
+  int score;
+};
+
+struct Player{
+  int wins;
+  int balance;
+  Hand hand;
+  //Chips chips;
+};
+
+struct Dealer{
+  int wins;
+  Hand hand;
+  //Chips chips;
+};
+
+
+// Fills un_used card array with two decks of cards.
+void GenerateDeck(Deck deck){
+  char current_suit;
+  char current_color;
+
+  // Two decks so must repeat process twice ugh.
+  for ( int deck_num=0; deck_num<=1; deck_num++ ){
+    // 1-4
+    for ( int i=1; i<5; i++ ){
+      if ( i == 0 ) { current_suit = 'D'; current_color = 'R'; } // Diamonds
+      if ( i == 1 ) { current_suit = 'C'; current_color = 'B'; } // Clubs
+      if ( i == 2 ) { current_suit = 'H'; current_color = 'R'; } // Hearts
+      if ( i == 3 ) { current_suit = 'S'; current_color = 'B'; } // Spades
+
+      // 1-13
+      for ( int j=1; j<14; j++ ){
+	Card current_card;
+      
+	if ( j >= 1 && j <= 10 ) { current_card.value = j; } // value 1-10
+	else { current_card.value = 10;} // value jack/queen/king = 10
+      
+	current_card.suit = current_suit;
+	current_card.color = current_color;
+      
+	// ACE
+	if ( j == 1 ){
+	  current_card.face = 'A';
+	}
+	// 2 - 9
+	if ( j >= 2 && j <= 9 ){
+	  current_card.face = ('0' + j); // int -> char 
+	}
+	// 10
+	if ( j == 10 ) { current_card.face = 'X'; }
+	// 11 - 13
+	if ( j == 11 ) { current_card.face = 'J'; }
+	if ( j == 12 ) { current_card.face = 'Q'; }
+	if ( j == 13 ) { current_card.face = 'K'; }
+      
+	// **DEBUG**
+	/*
+	std::cout << "value: " << current_card.value << " suit: "
+		<< current_card.suit << " color: " << current_card.color
+		<< " face: " << current_card.face << std::endl;
+	*/
+
+	// Placing card into un_used deck
+	deck.un_used[(deck_num*52)+(i*j)] = current_card;
+	
+      }
+    }
+  }
+}
+
+
+// Function to print the contents of a Card
+void printCard(const Card& card) {
+    std::cout << "Value: " << card.value << std::endl;
+    std::cout << "Suit: " << card.suit << std::endl;
+    std::cout << "Color: " << card.color << std::endl;
+    std::cout << "Face: " << card.face << std::endl;
+}
+
+// Function to print the contents of the un_used array in a Deck
+void printDeck(const Deck& deck) {
+    std::cout << "Printing un_used cards:" << std::endl;
+    for (const Card& card : deck.un_used) {
+        printCard(card);
+        std::cout << std::endl;
+    }
+}
+
+
+
+
+int main(){
+
+  Deck deck;
+  GenerateDeck(deck); // X2
+  
+  printDeck(deck);
+  
+  return 0;
+}
