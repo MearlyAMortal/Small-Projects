@@ -20,10 +20,12 @@
 const int DECK_SIZE = 104;
 
 struct Card{
+  // Functional
   int value;
+  // Cosmetic
   char suit;
   char color;
-  char face;
+  char face; 
 };
 
 struct Deck{
@@ -37,21 +39,24 @@ struct Hand{
   Card cards[11]; //Max is 4 aces 4 twos and 3 threes
   int size;
   int score;
+  bool is_score_soft;
 };
 
 struct Player{
   int id;
   int wins;
   int balance;
+  int last_bet;
   Hand hand;
-  //Chips chips;
 };
 
 struct Dealer{
   int wins;
   Hand hand;
-  //Chips chips;
+  int dealer_balance;
 };
+
+
 
 
 
@@ -171,7 +176,6 @@ void printCard(const Card& card) {
   std::cout << "Color: " << card.color << std::endl;
   std::cout << "Face: " << card.face << std::endl;
 }
-
 // Function to print the contents of the un_used array in a Deck
 void printDeck(const Deck& deck) {
   std::cout << "Printing un_used cards:" << std::endl;
@@ -191,7 +195,7 @@ void printPlayers(const std::vector<Player> &players){
 
 
 
-// Returns a vector with the desired number of players.                                                                                                              
+// Generates players and gived 10,000 dollars as a balance
 void MakePlayers(std::vector<Player> &players){
   int num_players_gen;
   std::cout << "And how many of you will be joining us today? (table sits 5): ";
@@ -204,6 +208,7 @@ void MakePlayers(std::vector<Player> &players){
   for ( int i = 0; i < num_players_gen; i++ ){
     Player player;
     player.id = i;
+    player.balance = 10000;
     players.push_back(player);
   }
   std::cout << "Added " << players.size() << " players to the game." << std::endl;
@@ -211,16 +216,48 @@ void MakePlayers(std::vector<Player> &players){
 
 
 
+void aceVenturaHelper(Deck& deck, Dealer& dealer){
+  int deck_marker = (deck.un_used_count)-1;
+  if ( deck.un_used[deck_marker].face == 'A' && dealer.hand.is_score_soft == false){
+    dealer.hand.is_score_soft = true; // then the hand is soft
+    dealer.hand.score += 11; // make score for card 11                                                                                                              
+  } else {
+    // or just add default value                                                                                                                                     
+    dealer.hand.score += deck.un_used[deck_marker].value;
+  }
+  // Check if the hand is soft and bust so can make score hard                                                                                                      
+  if ( dealer.hand.score > 21 && dealer.hand.is_score_soft == true ){
+    dealer.hand.score -= 10;
+    dealer.hand.is_score_soft = false;
+  }
+}
+void aceSenturaHelper(Deck& deck, Player& player){
+  int deck_marker = (deck.un_used_count)-1;
+  if ( deck.un_used[deck_marker].face == 'A' && player.hand.is_score_soft == false){
+    player.hand.is_score_soft = true; // then the hand is soft
+    player.hand.score += 11; // make score for card 11
+  } else {
+    // or just add default value                                                                                                                                     
+    player.hand.score += deck.un_used[deck_marker].value;
+  }
+  // Check if the hand is soft and bust so can make score hard                                                                                                      
+  if ( player.hand.score > 21 && player.hand.is_score_soft == true ){
+    player.hand.score -= 10;
+    player.hand.is_score_soft = false;
+  }
+}
 
 // Functions for placing cards in hands.
 void PlaceCardInDealerHand(Deck& deck, Dealer& dealer, int deck_marker){
+  // Is shoe empty?
   if ( deck.un_used_count == 0 ){
     ResetDeck(deck);
     ShuffleDeck(deck);
     deck_marker = (deck.un_used_count)-1;
   }
+  // Placing card
   dealer.hand.cards[dealer.hand.size] = deck.un_used[deck_marker];
-  dealer.hand.score += deck.un_used[deck_marker].value;
+  aceVenturaHelper(deck, dealer); // Handle points
   dealer.hand.size++;
   
   deck.used[deck.used_count] = deck.un_used[deck_marker];
@@ -239,10 +276,11 @@ void PlaceCardInDealerHand(Deck& deck, Dealer& dealer, int deck_marker){
     std::cout << "slide...";
     std::cout.flush();
     sleep(2);
-    std::cout << "dealer revealed " << deck.used[deck.used_count-1].value << "|" << deck.used[deck.used_count-1].suit;
+    std::cout << "dealer reveals " << dealer.hand.cards[0].face << "|" << dealer.hand.cards[0].suit;
   }
   if ( dealer.hand.size > 2 ){
-    std::cout << "flipped " << deck.used[deck.used_count-1].value << "|" << deck.used[deck.used_count-1].suit << " for the dealer";
+    //std::cout << std::endl;
+    std::cout << "dealer flips " << deck.used[(deck.used_count)-1].face << "|" << deck.used[(deck.used_count)-1].suit;
   }
 }
 void PlaceCardInPlayerHand(Deck& deck, Player& player, int deck_marker){
@@ -252,7 +290,7 @@ void PlaceCardInPlayerHand(Deck& deck, Player& player, int deck_marker){
     deck_marker = (deck.un_used_count)-1;
   }
   player.hand.cards[player.hand.size] = deck.un_used[deck_marker];
-  player.hand.score += deck.un_used[deck_marker].value;
+  aceSenturaHelper(deck, player); // Handle points
   player.hand.size++;
   
   deck.used[deck.used_count] = deck.un_used[deck_marker];
@@ -264,22 +302,28 @@ void PlaceCardInPlayerHand(Deck& deck, Player& player, int deck_marker){
   std::cout << "...";
   std::cout.flush();
   sleep(1);
-  std::cout << "flipped " << deck.used[deck.used_count-1].value << "|" << deck.used[deck.used_count-1].suit << " for player " << (player.id)+1;
+  std::cout << "[" << deck.used[deck.used_count-1].face << "|" << deck.used[deck.used_count-1].suit << "]-->(" << (player.id)+1 << ")";
 }
 
 
 
 
-// Returns state 'w' = win21, 'c' = current = in-play(can return > 21), 's' = stand at 17, 'b' = bust
+// Returns state 'w' = win21, 'c' = current = in-play(can return > 21), 's' = stand at 17, 'x' = bust
 char DealerAction(Deck& deck, Dealer& dealer){
   int deck_marker = (deck.un_used_count)-1;
+  if ( dealer.hand.size == 2 && dealer.hand.score != 21 ){
+    std::cout << std::endl;
+    std::cout << "Dealer has " << dealer.hand.score;
+  }else{
+    //std::cout << "dealer shows " << dealer.hand.cards[0].value;
+  }
   // Winner?
   if ( dealer.hand.score == 21 ){
     return 'w';
   }
   // Bust?
   if ( dealer.hand.score > 21 ){
-    return 'b';
+    return 'x';
   }
   // Not 17 yet?
   if ( dealer.hand.score < 17 ){
@@ -296,20 +340,30 @@ char DealerAction(Deck& deck, Dealer& dealer){
 // Returns state 'w' = win, 'c' = current = in-play(can return > 21), 's' = stand
 char PlayerAction(Deck& deck, Player& player){
   std::cout << std::endl;
-  std::cout << "Player " << (player.id)+1 << " has " << player.hand.score << ". " << std::endl;
-
-  // Winner winner chicken feet                                                                                                                                      
-  if ( player.hand.score == 21 ) {
-    std::cout << "Player wins 2.5x bet!" << std::endl;
+  // Auto win
+  if ( player.hand.score == 21 && player.hand.size == 2) {
+    std::cout << "Player " << (player.id)+1 << " has 21!" << std::endl;
     player.wins++;
     return 'w';
   }
-
+  if ( player.hand.is_score_soft == true ){
+    std::cout << "Player " << (player.id)+1 << " has soft " << player.hand.score << ". " << std::endl;
+  } else {
+    std::cout << "Player " << (player.id)+1 << " has " << player.hand.score << ". " << std::endl;
+  }
+  if ( player.hand.score == 21 ){
+    return 's';
+  }
+  
   char player_action;
   int deck_marker = (deck.un_used_count)-1;
-  std::cout << "| (D)Double  | (h)Hit | (s)Stand |  (S)Split |" << std::endl;
+  
+  if ( player.hand.size == 2 ){
+    std::cout << "| (D)Double  | (h)Hit | (s)Stand |  (S)Split |" << std::endl;
+  }
   std::cout << "Player " << (player.id)+1 << "'s action: ";
   std::cin >> player_action;
+  
   // Loop for checking correct input
   while ( player_action == 'D' || player_action == 'h' || player_action == 'S' || player_action == 's' ){
     // Reset deck marker
@@ -326,7 +380,7 @@ char PlayerAction(Deck& deck, Player& player){
     // TODO double
     if ( player_action == 'D' ){
       std::cout << "Best of luck to you sir, doubling the bet." << std::endl;
-      PlaceCardInPlayerHand(deck, player, deck_marker);
+      //PlaceCardInPlayerHand(deck, player, deck_marker);
       // Double bet here..
       return 's';
     }
@@ -352,9 +406,11 @@ void DealCards(Deck& deck, Dealer& dealer, std::vector<Player> &players){
   // Making sure hand size is initialized
   dealer.hand.size = 0;
   dealer.hand.score = 0;
+  dealer.hand.is_score_soft = false;
   for ( int p = 0; p < players.size(); p++ ){
     players[p].hand.size = 0;
     players[p].hand.score = 0;
+    players[p].hand.is_score_soft = false;
   }
   
   // For each card to be delt
@@ -383,25 +439,44 @@ void DealCards(Deck& deck, Dealer& dealer, std::vector<Player> &players){
 // Checks the scores and outputs some text and gives chips to players or dealer
 void CheckScoresOutcome(Deck& deck, std::vector<Player> &players, Dealer& dealer, char player_states[], char dealer_state){
   for ( int p = 0; p < players.size(); p++ ){
+    int win = 0;
     // Check for auto win 
     if ( player_states[p] == 'w' ){
       //Auto win
+      win = (players[p].last_bet)*2.5;
+      std::cout << "Player " << (players[p].id)+1 << " has blackjack. Win " << win << "!" << std::endl;
+      dealer.dealer_balance -= win;
+      players[p].balance += win;
     }
-    if ( player_states[p] == 'x' ){
-      //Players Lose                                                                                                                                                 
+    else if ( player_states[p] == 'x' ){
+      //Players Lose
+      std::cout	<< "Player " <<	(players[p].id)+1 << " BUSTED in my bussy sheesh." << std::endl;
+      dealer.dealer_balance += players[p].last_bet;
     }
-    if ( dealer_state == 'x' ){
+    else if ( dealer_state == 'x' && player_states[p] != 'x' ){
       //Dealer lose, auto player win that didnt bust
+      win = (players[p].last_bet)*2;
+      std::cout << "Player " << (players[p].id)+1 << " beats dealer. Win " << win << "!" << std::endl;
+      dealer.dealer_balance -= win;
+      players[p].balance += win;
     }
     // Push
-    if ( players[p].hand.score == dealer.hand.score ){
+    else if ( players[p].hand.score == dealer.hand.score ){
       //Tie
+      std::cout << "Player " << (players[p].id)+1 << " Pushed with dealer" << std::endl;
+      players[p].balance += players[p].last_bet;
     }
-    if ( players[p].hand.score > dealer.hand.score ){
+    else if ( players[p].hand.score > dealer.hand.score && player_states[p] != 'x'){
       //Player win
+      win = (players[p].last_bet)*2;
+      std::cout << "Player " << (players[p].id)+1 << " beats dealer. Win " << win << "!" << std::endl;
+      dealer.dealer_balance -= win;
+      players[p].balance += win;
     }
-    if ( players[p].hand.score < dealer.hand.score ){
+    else if ( players[p].hand.score < dealer.hand.score && dealer_state != 'x'){
       //Dealer win
+      std::cout << "Player " << (players[p].id)+1 << " lost lmao ez wanna try again big guy?" << std::endl;
+      dealer.dealer_balance += players[p].last_bet;
     }   
   }
 }
@@ -409,10 +484,42 @@ void CheckScoresOutcome(Deck& deck, std::vector<Player> &players, Dealer& dealer
 
 
 
+// Take bets from players
+void TakeBets(std::vector<Player> &players){
+  for ( int i = 0; i < players.size(); i++ ){
+    if ( players[i].balance <= 0 ){
+      std::cout << "YOU BROKE AS HELL BRO, YOU CAN STILL PLAY THO ON THE HOUSE CAUSE IM TOO LAZY TO CODE THAT YET" << std::endl;
+      break;
+    }
+    std::cout << "Player " << (players[i].id)+1 << "'s balance: " << players[i].balance;
+    int bet;
+    while ( true ){
+      std::cout << " | bet: ";
+      std::cin >> bet;
+      if ( bet < 1 ){
+	std::cout << "Your motor function fails as you try to bet more chips..." << std::endl;
+	continue;
+      }
+      if ( bet <= players[i].balance ){
+	players[i].balance -= bet;
+	players[i].last_bet = bet;
+	break;
+      } else {
+	std::cout << "You go to bet more chips but they vanish right in front of your eyes..." << std::endl;
+      }
+    }
+  }
+  std::cout << "--------------------------" << std::endl;
+}
+
+
+
+
 // Main game loop will go until there are no cards remaining or all players consedes
 void GameLoop(Deck& deck, Dealer& dealer, std::vector<Player> &players){
-  std::cout << "Your bets please...(coming soon)" << std::endl;
-  // TODO bets ting bruv
+  std::cout << "Your bets please..." << std::endl;
+  TakeBets(players);
+
   std::cout << "Best of luck!" << std::endl;
   DealCards(deck, dealer, players);
   
@@ -420,8 +527,12 @@ void GameLoop(Deck& deck, Dealer& dealer, std::vector<Player> &players){
   char dealer_state;  
   int player_scores[players.size()];
   int dealer_score;
-  
-  std::cout << "Dealer has " << dealer.hand.cards[0].value << ". " << std::endl;
+
+  if ( dealer.hand.cards[0].face == 'A' ){
+    std::cout << "Dealer shows " << dealer.hand.cards[0].value << "/" << (dealer.hand.cards[0].value)+10 << ". " << std::endl;
+  } else {
+    std::cout << "Dealer shows " << dealer.hand.cards[0].value << ". " << std::endl;
+  }
 
   // For each player
   for ( int i = 0; i < players.size(); i++ ){
@@ -434,6 +545,8 @@ void GameLoop(Deck& deck, Dealer& dealer, std::vector<Player> &players){
       // Check if player busted
       if ( player_states[i] == 'c' && player_scores[i] > 21 || player_states[i] == 'x'){
 	player_states[i] = 'x';
+	std::cout << std::endl;
+	std::cout << "Player " << (players[i].id)+1 << " busted!" << std::endl;
 	break;
       }
       // Check if player got 21 on first 2 cards
@@ -455,10 +568,11 @@ void GameLoop(Deck& deck, Dealer& dealer, std::vector<Player> &players){
   char dealer_action = DealerAction(deck, dealer);
   while ( true ){
     // Did he bust? pause
-    if ( dealer_action == 'b' ){
-      dealer_state = 'b';
+    if ( dealer_action == 'x' ){
+      dealer_state = 'x';
       std::cout << std::endl;
-      std::cout << "Dealer busted with " << dealer.hand.score << std::endl;
+      std::cout << "Dealer busted!" << std::endl;
+      std::cout << std::endl;
       break;
     }
     // Does he have 21?
@@ -466,6 +580,7 @@ void GameLoop(Deck& deck, Dealer& dealer, std::vector<Player> &players){
       dealer_state = 'w';
       std::cout << std::endl;
       std::cout << "Dealer has 21. " << std::endl;
+      std::cout << std::endl;
       break;
     }
     // Dealer stood
@@ -473,6 +588,7 @@ void GameLoop(Deck& deck, Dealer& dealer, std::vector<Player> &players){
       dealer_state = 's';
       std::cout << std::endl;
       std::cout << "Dealer stands with " << dealer.hand.score << ". " << std::endl;
+      std::cout << std::endl;
       break;
     }
     // In game
@@ -485,7 +601,7 @@ void GameLoop(Deck& deck, Dealer& dealer, std::vector<Player> &players){
   
   // --------------------------
   // Recursive call to GameLoop.
-  //GameLoop(deck, dealer, players);
+  GameLoop(deck, dealer, players);
 }
 
 
@@ -497,6 +613,7 @@ int main(){
   ShuffleDeck(deck); // Randomly shuffle
 
   Dealer MrStealYourMoney;
+  MrStealYourMoney.dealer_balance = 750000;
   std::vector<Player> players;
   MakePlayers(players); // Generate all Player structs
   
